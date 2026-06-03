@@ -35,12 +35,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/axios-auth-client.git"
+    "url": "https://github.com/UsamaImran/axios-auth-client"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/axios-auth-client/issues"
+    "url": "https://github.com/UsamaImran/axios-auth-client/issues"
   },
-  "homepage": "https://github.com/yourusername/axios-auth-client#readme",
+  "homepage": "https://github.com/UsamaImran/axios-auth-client",
   "peerDependencies": {
     "axios": "^1.6.0"
   },
