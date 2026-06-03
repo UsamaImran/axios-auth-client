@@ -23,6 +23,7 @@
     "clean": "rm -rf dist",
     "prebuild": "npm run clean",
     "type-check": "tsc --noEmit",
+    "lint": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run lint && npm run build"
   },
   "keywords": [
