@@ -42,7 +42,8 @@ export const createMockAxiosError = (
   return error;
 };
 
-export const VALID_BASE64 = "SGVsbG8gV29ybGQ=";
+// Base64 test strings
+export const VALID_BASE64 = "SGVsbG8gV29ybGQ="; // "Hello World"
 export const VALID_BASE64URL = "SGVsbG8tV29ybGQ_"; // "Hello-World?"
 export const JSON_BASE64 =
   "eyJ0ZXN0IjoiZGF0YSIsIm5lc3RlZCI6eyJ2YWx1ZSI6MTIzfX0="; // {"test":"data","nested":{"value":123}}
