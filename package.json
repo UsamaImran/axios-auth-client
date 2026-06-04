@@ -1,6 +1,6 @@
 {
   "name": "axios-auth-client",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A lightweight, framework-agnostic Axios wrapper with automatic JWT access token refresh (proactive + reactive), 401 retry logic, and custom refresh support.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
