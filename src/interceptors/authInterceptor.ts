@@ -1,16 +1,21 @@
 import {
-  AxiosInstance,
-  InternalAxiosRequestConfig,
   AxiosError,
+  AxiosInstance,
   AxiosResponse,
+  InternalAxiosRequestConfig,
 } from "axios";
 import { TokenManager } from "../jwt/tokenManager";
 import { JwtDecoder } from "../jwt/jwtDecoder";
 
+interface AuthRequestConfig extends InternalAxiosRequestConfig {
+  _authToken?: string | null;
+  _retry?: boolean;
+  _skipAuthRefresh?: boolean;
+}
+
 interface AuthConfig {
   tokenHeader: string;
   expiryThresholdSeconds: number;
-  refreshTokenEndpoint: string;
   getAccessToken: () => string | null;
 }
 
@@ -30,8 +35,8 @@ export class AuthInterceptor {
 
   private setupRequestInterceptor(): void {
     this.axiosInstance.interceptors.request.use(
-      async (config: InternalAxiosRequestConfig) => {
-        if (this.isPublic) return config;
+      async (config: AuthRequestConfig) => {
+        if (this.isPublic || config._skipAuthRefresh) return config;
 
         let token = this.authConfig.getAccessToken();
 
@@ -42,13 +47,13 @@ export class AuthInterceptor {
             this.authConfig.expiryThresholdSeconds,
           )
         ) {
-          const newToken = await this.tokenManager.refreshToken();
-          if (newToken) token = newToken;
+          token = await this.tokenManager.refreshToken();
         }
 
         if (token) {
           config.headers.set(this.authConfig.tokenHeader, token);
         }
+        config._authToken = token;
 
         return config;
       },
@@ -60,25 +65,31 @@ export class AuthInterceptor {
     this.axiosInstance.interceptors.response.use(
       (response: AxiosResponse) => response,
       async (error: AxiosError) => {
-        const originalRequest = error.config as InternalAxiosRequestConfig & {
-          _retry?: boolean;
-        };
+        const originalRequest = error.config as AuthRequestConfig | undefined;
 
         if (
-          error.response?.status === 401 &&
-          !originalRequest?._retry &&
-          !originalRequest?.url?.includes(this.authConfig.refreshTokenEndpoint)
+          this.isPublic ||
+          originalRequest?._skipAuthRefresh ||
+          error.response?.status !== 401 ||
+          !originalRequest ||
+          originalRequest._retry
         ) {
-          originalRequest._retry = true;
-          const newToken = await this.tokenManager.refreshToken();
-
-          if (newToken) {
-            originalRequest.headers.set(this.authConfig.tokenHeader, newToken);
-            return this.axiosInstance(originalRequest);
-          }
+          return Promise.reject(error);
         }
 
-        return Promise.reject(error);
+        const currentToken = this.authConfig.getAccessToken();
+        if (currentToken && currentToken !== originalRequest._authToken) {
+          originalRequest.headers.set(this.authConfig.tokenHeader, currentToken);
+          originalRequest._retry = true;
+          return this.axiosInstance(originalRequest);
+        }
+
+        originalRequest._retry = true;
+
+        const newToken = await this.tokenManager.refreshToken();
+        originalRequest.headers.set(this.authConfig.tokenHeader, newToken);
+        originalRequest._authToken = newToken;
+        return this.axiosInstance(originalRequest);
       },
     );
   }
