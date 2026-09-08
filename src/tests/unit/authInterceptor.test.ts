@@ -137,22 +137,17 @@ describe("AuthInterceptor", () => {
       expect(result).toBe(config);
     });
 
-    it("should handle refresh returning null (no token added)", async () => {
+    it("should propagate proactive refresh failures without using the old token", async () => {
       expect(requestInterceptorFn).not.toBeNull();
 
       const config = { headers: { set: jest.fn() } } as any;
+      const refreshError = new Error("refresh failed");
       mockJwtDecoder.isTokenExpiringSoon.mockReturnValue(true);
-      mockTokenManager.refreshToken.mockResolvedValue(null);
+      mockTokenManager.refreshToken.mockRejectedValue(refreshError);
       mockAuthConfig.getAccessToken.mockReturnValue(VALID_ACCESS_TOKEN);
 
-      const result = await requestInterceptorFn!(config);
-
-      // When refresh returns null, the original token is still used
-      expect(config.headers.set).toHaveBeenCalledWith(
-        "Authorization",
-        VALID_ACCESS_TOKEN,
-      );
-      expect(result).toBe(config);
+      await expect(requestInterceptorFn!(config)).rejects.toBe(refreshError);
+      expect(config.headers.set).not.toHaveBeenCalled();
     });
 
     it("should retry request after 401 and refresh", async () => {
@@ -186,7 +181,7 @@ describe("AuthInterceptor", () => {
       expect(result).toEqual(mockRetryResponse);
     });
 
-    it("should not retry when refresh returns null", async () => {
+    it("should propagate refresh failure after 401", async () => {
       expect(responseErrorInterceptorFn).not.toBeNull();
 
       const originalRequest = {
@@ -199,10 +194,11 @@ describe("AuthInterceptor", () => {
         response: { status: 401 },
         config: originalRequest,
       };
+      const refreshError = new Error("refresh failed");
 
-      mockTokenManager.refreshToken.mockResolvedValue(null);
+      mockTokenManager.refreshToken.mockRejectedValue(refreshError);
 
-      await expect(responseErrorInterceptorFn!(error)).rejects.toEqual(error);
+      await expect(responseErrorInterceptorFn!(error)).rejects.toBe(refreshError);
       expect(originalRequest.headers.set).not.toHaveBeenCalled();
     });
 
